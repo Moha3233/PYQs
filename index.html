@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCQ Quiz App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* Same CSS as before */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #4a6fa5;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .dashboard {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .timer-container {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .filters {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex: 2;
+            min-width: 300px;
+        }
+        
+        .quiz-container {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        
+        .option {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .option:hover {
+            background-color: #f0f5ff;
+            border-color: #4a6fa5;
+        }
+        
+        .option.selected {
+            background-color: #e1ebff;
+            border-color: #4a6fa5;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        
+        .results {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2rem;
+            color: #4a6fa5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MCQ Quiz App</h1>
+            <p class="subtitle">Questions loaded automatically from repository</p>
+        </header>
+        
+        <div id="loading-message" class="loading">
+            Loading questions from database...
+        </div>
+        
+        <div class="dashboard" style="display: none;" id="main-content">
+            <div class="timer-container">
+                <h3>Time Remaining</h3>
+                <div class="timer" id="timer">10:00</div>
+            </div>
+            
+            <div class="filters">
+                <h3>Filter Questions</h3>
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="exam-filter">Exam</label>
+                        <select id="exam-filter">
+                            <option value="all">All Exams</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="section-filter">Section</label>
+                        <select id="section-filter">
+                            <option value="all">All Sections</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="topic-filter">Topic</label>
+                        <select id="topic-filter">
+                            <option value="all">All Topics</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="question-count">Number of Questions</label>
+                        <input type="number" id="question-count" min="1" max="50" value="10">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>&nbsp;</label>
+                        <button id="start-quiz">Start Quiz</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="quiz-container" id="quiz-container" style="display: none;">
+            <!-- Quiz content will be populated by JavaScript -->
+        </div>
+        
+        <div class="results" id="results-container">
+            <!-- Results will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // Configuration - Update this path to your Excel file in GitHub
+        const EXCEL_FILE_URL = 'https://raw.githubusercontent.com/yourusername/your-repo/main/questions.xlsx';
+        
+        // Global variables
+        let questionData = [];
+        let filteredQuestions = [];
+        let currentQuestionIndex = 0;
+        let userAnswers = [];
+        let timer;
+        let timeLeft;
+        let quizActive = false;
+
+        // DOM Elements
+        const loadingMessage = document.getElementById('loading-message');
+        const mainContent = document.getElementById('main-content');
+        const quizContainer = document.getElementById('quiz-container');
+        const resultsContainer = document.getElementById('results-container');
+        const timerElement = document.getElementById('timer');
+        const startQuizBtn = document.getElementById('start-quiz');
+        const examFilter = document.getElementById('exam-filter');
+        const sectionFilter = document.getElementById('section-filter');
+        const topicFilter = document.getElementById('topic-filter');
+        const questionCountInput = document.getElementById('question-count');
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadQuestionsFromGitHub();
+        });
+
+        // Load questions from GitHub repository
+        async function loadQuestionsFromGitHub() {
+            try {
+                const response = await fetch(EXCEL_FILE_URL);
+                if (!response.ok) {
+                    throw new Error('Failed to load questions file');
+                }
+                
+                const arrayBuffer = await response.arrayBuffer();
+                const data = new Uint8Array(arrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // Assuming the first sheet contains the question data
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Convert to JSON
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                // Process the data
+                questionData = processExcelData(jsonData);
+                
+                // Update UI
+                updateFilterOptions();
+                loadingMessage.style.display = 'none';
+                mainContent.style.display = 'flex';
+                
+                console.log(`Successfully loaded ${questionData.length} questions`);
+                
+            } catch (error) {
+                console.error('Error loading questions:', error);
+                loadingMessage.innerHTML = `
+                    <div style="color: #e74c3c;">
+                        Error loading questions: ${error.message}<br>
+                        <button onclick="loadQuestionsFromGitHub()" style="margin-top: 10px;">Retry</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Process Excel data into question objects
+        function processExcelData(jsonData) {
+            const questions = [];
+            
+            // Skip header row (index 0)
+            for (let i = 1; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                
+                // Skip empty rows
+                if (!row || row.length < 10) continue;
+                
+                const question = {
+                    id: row[0] || i,
+                    exam: row[1] || '',
+                    section: row[2] || '',
+                    topic: row[3] || '',
+                    questionType: row[4] || 'MCQ',
+                    question: row[5] || '',
+                    year: row[6] || '',
+                    options: [row[7], row[8], row[9], row[10]].filter(opt => opt !== undefined && opt !== ''),
+                    correctAnswer: row[11] || ''
+                };
+                
+                questions.push(question);
+            }
+            
+            return questions;
+        }
+
+        // Update filter dropdowns based on loaded data
+        function updateFilterOptions() {
+            // Clear existing options (except "All")
+            examFilter.innerHTML = '<option value="all">All Exams</option>';
+            sectionFilter.innerHTML = '<option value="all">All Sections</option>';
+            topicFilter.innerHTML = '<option value="all">All Topics</option>';
+            
+            // Get unique values for each filter
+            const exams = [...new Set(questionData.map(q => q.exam))].filter(Boolean);
+            const sections = [...new Set(questionData.map(q => q.section))].filter(Boolean);
+            const topics = [...new Set(questionData.map(q => q.topic))].filter(Boolean);
+            
+            // Add options to filters
+            exams.forEach(exam => {
+                const option = document.createElement('option');
+                option.value = exam;
+                option.textContent = exam;
+                examFilter.appendChild(option);
+            });
+            
+            sections.forEach(section => {
+                const option = document.createElement('option');
+                option.value = section;
+                option.textContent = section;
+                sectionFilter.appendChild(option);
+            });
+            
+            topics.forEach(topic => {
+                const option = document.createElement('option');
+                option.value = topic;
+                option.textContent = topic;
+                topicFilter.appendChild(option);
+            });
+            
+            // Add event listener to start quiz button
+            startQuizBtn.addEventListener('click', startQuiz);
+        }
+
+        // Start the quiz
+        function startQuiz() {
+            // Apply filters
+            applyFilters();
+            
+            const questionCount = parseInt(questionCountInput.value);
+            if (filteredQuestions.length === 0) {
+                alert('No questions match the selected filters.');
+                return;
+            }
+            
+            // Limit questions to requested count
+            filteredQuestions = filteredQuestions.slice(0, questionCount);
+            
+            // Initialize user answers
+            userAnswers = new Array(filteredQuestions.length).fill(null);
+            
+            // Set up timer (1 minute per question)
+            timeLeft = filteredQuestions.length * 60;
+            updateTimerDisplay();
+            startTimer();
+            
+            // Show quiz container
+            quizContainer.style.display = 'block';
+            resultsContainer.style.display = 'none';
+            mainContent.style.display = 'none';
+            
+            // Show first question
+            currentQuestionIndex = 0;
+            showQuestion();
+            
+            quizActive = true;
+        }
+
+        // Apply filters to question data
+        function applyFilters() {
+            const selectedExam = examFilter.value;
+            const selectedSection = sectionFilter.value;
+            const selectedTopic = topicFilter.value;
+            
+            filteredQuestions = questionData.filter(question => {
+                return (selectedExam === 'all' || question.exam === selectedExam) &&
+                       (selectedSection === 'all' || question.section === selectedSection) &&
+                       (selectedTopic === 'all' || question.topic === selectedTopic);
+            });
+            
+            // Shuffle questions for random order
+            shuffleArray(filteredQuestions);
+        }
+
+        // Shuffle array (Fisher-Yates algorithm)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Start the countdown timer
+        function startTimer() {
+            clearInterval(timer);
+            timer = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    submitQuiz();
+                }
+            }, 1000);
+        }
+
+        // Update timer display
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Change color when time is running out
+            if (timeLeft < 60) {
+                timerElement.style.color = '#e74c3c';
+            } else {
+                timerElement.style.color = '#4a6fa5';
+            }
+        }
+
+        // Display current question
+        function showQuestion() {
+            const question = filteredQuestions[currentQuestionIndex];
+            
+            quizContainer.innerHTML = `
+                <div class="question-number">Question ${currentQuestionIndex + 1} of ${filteredQuestions.length}</div>
+                <div class="question-text">${question.question}</div>
+                <div class="options" id="options-container">
+                    ${question.options.map((option, index) => `
+                        <div class="option ${userAnswers[currentQuestionIndex] === option ? 'selected' : ''}" 
+                             data-option="${option}">
+                            ${String.fromCharCode(65 + index)}. ${option}
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="navigation">
+                    <button id="prev-btn" ${currentQuestionIndex === 0 ? 'disabled' : ''}>Previous</button>
+                    <button id="next-btn" ${currentQuestionIndex === filteredQuestions.length - 1 ? 'style="display:none"' : ''}>Next</button>
+                    <button id="submit-btn" ${currentQuestionIndex === filteredQuestions.length - 1 ? '' : 'style="display:none"'}">Submit Quiz</button>
+                </div>
+            `;
+            
+            // Add event listeners to options
+            document.querySelectorAll('.option').forEach(option => {
+                option.addEventListener('click', () => {
+                    const selectedOption = option.dataset.option;
+                    selectOption(selectedOption);
+                });
+            });
+            
+            // Add event listeners to navigation buttons
+            document.getElementById('prev-btn').addEventListener('click', showPreviousQuestion);
+            document.getElementById('next-btn').addEventListener('click', showNextQuestion);
+            document.getElementById('submit-btn').addEventListener('click', submitQuiz);
+        }
+
+        // Select an option
+        function selectOption(option) {
+            userAnswers[currentQuestionIndex] = option;
+            
+            // Update UI to show selected option
+            document.querySelectorAll('.option').forEach(opt => {
+                opt.classList.remove('selected');
+                if (opt.dataset.option === option) {
+                    opt.classList.add('selected');
+                }
+            });
+        }
+
+        // Show previous question
+        function showPreviousQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                showQuestion();
+            }
+        }
+
+        // Show next question
+        function showNextQuestion() {
+            if (currentQuestionIndex < filteredQuestions.length - 1) {
+                currentQuestionIndex++;
+                showQuestion();
+            }
+        }
+
+        // Submit the quiz
+        function submitQuiz() {
+            clearInterval(timer);
+            quizActive = false;
+            
+            // Calculate results
+            let correctCount = 0;
+            let incorrectCount = 0;
+            let unansweredCount = 0;
+            
+            filteredQuestions.forEach((question, index) => {
+                if (userAnswers[index] === null) {
+                    unansweredCount++;
+                } else if (userAnswers[index] === question.correctAnswer) {
+                    correctCount++;
+                } else {
+                    incorrectCount++;
+                }
+            });
+            
+            // Display results
+            resultsContainer.innerHTML = `
+                <h2>Quiz Completed!</h2>
+                <div class="score">Your Score: ${correctCount}/${filteredQuestions.length}</div>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value">${correctCount}</div>
+                        <div class="stat-label">Correct</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">${incorrectCount}</div>
+                        <div class="stat-label">Incorrect</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">${unansweredCount}</div>
+                        <div class="stat-label">Unanswered</div>
+                    </div>
+                </div>
+                <button id="restart-btn">Take Another Quiz</button>
+                <button class="review-btn" id="review-btn">Review Answers</button>
+            `;
+            
+            // Add event listeners to result buttons
+            document.getElementById('restart-btn').addEventListener('click', restartQuiz);
+            document.getElementById('review-btn').addEventListener('click', reviewAnswers);
+            
+            // Show results container
+            quizContainer.style.display = 'none';
+            resultsContainer.style.display = 'block';
+        }
+
+        // Restart the quiz
+        function restartQuiz() {
+            resultsContainer.style.display = 'none';
+            mainContent.style.display = 'flex';
+            currentQuestionIndex = 0;
+            userAnswers = [];
+        }
+
+        // Review answers
+        function reviewAnswers() {
+            alert('Review feature would show each question with your answer and the correct answer highlighted.');
+        }
+    </script>
+</body>
+</html>
