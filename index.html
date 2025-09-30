@@ -441,6 +441,25 @@
             flex-wrap: wrap;
         }
         
+        .file-upload {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .file-input {
+            margin: 15px 0;
+            padding: 15px;
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            transition: var(--transition);
+        }
+        
+        .file-input:hover {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 1);
+        }
+        
         .loading {
             text-align: center;
             padding: 40px;
@@ -599,6 +618,25 @@
             margin-bottom: 15px;
             opacity: 0.5;
         }
+        
+        .status {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        
+        .status.success {
+            background: #d4f4e9;
+            color: #0ca678;
+            border: 1px solid #20c997;
+        }
+        
+        .status.error {
+            background: #fcdae4;
+            color: #c2255c;
+            border: 1px solid var(--danger);
+        }
     </style>
 </head>
 <body>
@@ -619,6 +657,16 @@
         </div>
         
         <div class="tab-content active" id="quiz-tab">
+            <div class="file-upload card">
+                <h3><i class="fas fa-file-upload"></i> Load Question Bank</h3>
+                <p>Upload your Excel file with questions to get started</p>
+                <div class="file-input">
+                    <input type="file" id="excel-file" accept=".xlsx, .xls">
+                </div>
+                <button id="load-data"><i class="fas fa-database"></i> Load Questions</button>
+                <div id="upload-status" class="status"></div>
+            </div>
+            
             <div class="dashboard" id="main-content" style="display: none;">
                 <div class="card timer-container">
                     <h3><i class="fas fa-clock"></i> Time Remaining</h3>
@@ -761,9 +809,6 @@
     </div>
 
     <script>
-        // Configuration - Update this path to your Excel file in GitHub
-        const EXCEL_FILE_URL = 'https://raw.githubusercontent.com/Moha3233/PYQs/main/questions.xlsx';
-        
         // Global variables
         let questionData = [];
         let filteredQuestions = [];
@@ -800,13 +845,14 @@
         const recordsTableBody = document.getElementById('records-table-body');
         const emptyRecords = document.getElementById('empty-records');
         const viewRecordsBtn = document.getElementById('view-records-btn');
+        const fileInput = document.getElementById('excel-file');
+        const loadDataBtn = document.getElementById('load-data');
+        const uploadStatus = document.getElementById('upload-status');
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
-            // Load questions automatically
-            loadQuestionsAutomatically();
-            
             // Set up event listeners
+            loadDataBtn.addEventListener('click', loadExcelData);
             startQuizBtn.addEventListener('click', startQuiz);
             viewRecordsBtn.addEventListener('click', showRecordsTab);
             
@@ -820,119 +866,120 @@
             
             // Load user records
             loadUserRecords();
+            
+            // Show file upload section by default
+            loadingMessage.style.display = 'none';
         });
 
-        // Load questions automatically from GitHub
-        async function loadQuestionsAutomatically() {
-            try {
-                // For demo purposes, we'll use sample data
-                // In production, you would fetch from EXCEL_FILE_URL
-                questionData = getSampleQuestions();
-                updateFilterOptions();
-                
-                loadingMessage.style.display = 'none';
-                mainContent.style.display = 'grid';
-                
-                console.log(`Successfully loaded ${questionData.length} questions`);
-                
-            } catch (error) {
-                console.error('Error loading questions:', error);
-                loadingMessage.innerHTML = `
-                    <div style="color: #e74c3c;">
-                        <i class="fas fa-exclamation-triangle"></i><br>
-                        Error loading questions: ${error.message}<br>
-                        <button onclick="loadQuestionsAutomatically()" style="margin-top: 10px;">Retry</button>
-                    </div>
-                `;
+        // Load questions from Excel file
+        function loadExcelData() {
+            const file = fileInput.files[0];
+            if (!file) {
+                showStatus('Please select an Excel file', 'error');
+                return;
             }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Get the first worksheet
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Convert to JSON - using raw to get all data
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+                    
+                    // Process the data
+                    questionData = processExcelData(jsonData);
+                    updateFilterOptions();
+                    
+                    showStatus(`Successfully loaded ${questionData.length} questions`, 'success');
+                    mainContent.style.display = 'grid';
+                    
+                } catch (error) {
+                    console.error('Error reading Excel file:', error);
+                    showStatus('Error reading Excel file. Please check the format.', 'error');
+                }
+            };
+            
+            reader.onerror = function() {
+                showStatus('Error reading file', 'error');
+            };
+            
+            reader.readAsArrayBuffer(file);
         }
 
-        // Sample questions for demo
-        function getSampleQuestions() {
-            return [
-                {
-                    id: 1,
-                    exam: "GATE",
-                    section: "Agritude",
-                    topic: "Articles",
-                    questionType: "MCQ",
-                    question: "Even though I had planned to go skiing with my friends, I had to ______ at the last moment because of an injury.",
-                    year: 2025,
-                    options: ["back up", "back of", "back on", "back out"],
-                    correctAnswer: "back out"
-                },
-                {
-                    id: 2,
-                    exam: "GATE",
-                    section: "Agritude",
-                    topic: "Articles",
-                    questionType: "MCQ",
-                    question: "The President, along with the Council of Ministers, ______ to visit India next week.",
-                    year: 2025,
-                    options: ["with", "wishes", "will wish", "is wishing"],
-                    correctAnswer: "wishes"
-                },
-                {
-                    id: 3,
-                    exam: "GATE",
-                    section: "Agritude",
-                    topic: "Grammar",
-                    questionType: "MCQ",
-                    question: "Which of the following sentences is grammatically correct?",
-                    year: 2024,
-                    options: [
-                        "Neither of the students have completed their homework.",
-                        "Neither of the students has completed their homework.",
-                        "Neither of the students have completed his homework.",
-                        "Neither of the students has completed his homework."
-                    ],
-                    correctAnswer: "Neither of the students has completed his homework."
-                },
-                {
-                    id: 4,
-                    exam: "GATE",
-                    section: "Agritude",
-                    topic: "Vocabulary",
-                    questionType: "MCQ",
-                    question: "What is the meaning of the word 'ephemeral'?",
-                    year: 2024,
-                    options: [
-                        "Lasting for a very short time",
-                        "Extremely beautiful",
-                        "Difficult to understand",
-                        "Related to memory"
-                    ],
-                    correctAnswer: "Lasting for a very short time"
-                },
-                {
-                    id: 5,
-                    exam: "GATE",
-                    section: "Agritude",
-                    topic: "Articles",
-                    questionType: "MCQ",
-                    question: "Fill in the blank: I saw ______ eagle flying high in ______ sky.",
-                    year: 2023,
-                    options: [
-                        "a, the",
-                        "an, the",
-                        "the, a",
-                        "an, a"
-                    ],
-                    correctAnswer: "an, the"
+        // Process Excel data into question objects
+        function processExcelData(jsonData) {
+            const questions = [];
+            
+            // Skip header row (index 0) and process each row
+            for (let i = 1; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                
+                // Skip empty rows or rows with insufficient data
+                if (!row || row.length < 8) {
+                    console.log('Skipping row', i, ' - insufficient data:', row);
+                    continue;
                 }
-            ];
+                
+                // Debug: log the row to see what data we have
+                console.log('Processing row', i, ':', row);
+                
+                // Create question object - adjust indices based on your Excel structure
+                const question = {
+                    id: row[0] || i,
+                    exam: row[1] || 'Unknown Exam',
+                    section: row[2] || 'General',
+                    topic: row[3] || 'Mixed',
+                    questionType: row[4] || 'MCQ',
+                    question: row[5] || 'No question text',
+                    year: row[6] || new Date().getFullYear(),
+                    options: [
+                        row[7] || 'Option A',
+                        row[8] || 'Option B', 
+                        row[9] || 'Option C',
+                        row[10] || 'Option D'
+                    ].filter(opt => opt && opt !== ''),
+                    correctAnswer: row[11] || ''
+                };
+                
+                // Validate that we have at least 2 options and a correct answer
+                if (question.options.length >= 2 && question.correctAnswer) {
+                    questions.push(question);
+                    console.log('Added question:', question);
+                } else {
+                    console.log('Skipping invalid question:', question);
+                }
+            }
+            
+            console.log('Total questions processed:', questions.length);
+            return questions;
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            uploadStatus.textContent = message;
+            uploadStatus.className = 'status';
+            uploadStatus.classList.add(type);
         }
 
         // Update filter dropdowns based on loaded data
         function updateFilterOptions() {
+            // Clear existing options
             examFilter.innerHTML = '<option value="all">All Exams</option>';
             sectionFilter.innerHTML = '<option value="all">All Sections</option>';
             topicFilter.innerHTML = '<option value="all">All Topics</option>';
             
+            // Get unique values
             const exams = [...new Set(questionData.map(q => q.exam))].filter(Boolean);
             const sections = [...new Set(questionData.map(q => q.section))].filter(Boolean);
             const topics = [...new Set(questionData.map(q => q.topic))].filter(Boolean);
             
+            // Add options to filters
             exams.forEach(exam => {
                 const option = document.createElement('option');
                 option.value = exam;
@@ -953,6 +1000,8 @@
                 option.textContent = topic;
                 topicFilter.appendChild(option);
             });
+            
+            console.log('Filters updated:', { exams, sections, topics });
         }
 
         // Switch between tabs
@@ -989,26 +1038,29 @@
                 return;
             }
             
+            // Check if questions are loaded
+            if (questionData.length === 0) {
+                alert('Please load questions from an Excel file first.');
+                return;
+            }
+            
             currentUserName = userNameInput.value.trim();
             currentUserEmail = userEmailInput.value.trim();
             
-            if (questionData.length === 0) {
-                alert('Questions are still loading. Please wait a moment.');
-                return;
-            }
-            
             applyFilters();
             const questionCount = parseInt(questionCountInput.value);
+            
             if (filteredQuestions.length === 0) {
-                alert('No questions match the selected filters.');
+                alert('No questions match the selected filters. Please check your filter settings.');
                 return;
             }
             
-            filteredQuestions = filteredQuestions.slice(0, questionCount);
+            // Limit questions to requested count
+            filteredQuestions = filteredQuestions.slice(0, Math.min(questionCount, filteredQuestions.length));
             userAnswers = new Array(filteredQuestions.length).fill(null);
             markedQuestions = new Array(filteredQuestions.length).fill(false);
             
-            // Set up timer
+            // Set up timer (1 minute per question)
             totalTime = filteredQuestions.length * 60;
             timeLeft = totalTime;
             quizStartTime = new Date();
@@ -1025,6 +1077,8 @@
             showQuestion();
             
             quizActive = true;
+            
+            console.log('Quiz started with', filteredQuestions.length, 'questions');
         }
 
         // Apply filters to question data
@@ -1034,15 +1088,20 @@
             const selectedTopic = topicFilter.value;
             
             filteredQuestions = questionData.filter(question => {
-                return (selectedExam === 'all' || question.exam === selectedExam) &&
-                       (selectedSection === 'all' || question.section === selectedSection) &&
-                       (selectedTopic === 'all' || question.topic === selectedTopic);
+                const examMatch = selectedExam === 'all' || question.exam === selectedExam;
+                const sectionMatch = selectedSection === 'all' || question.section === selectedSection;
+                const topicMatch = selectedTopic === 'all' || question.topic === selectedTopic;
+                
+                return examMatch && sectionMatch && topicMatch;
             });
             
+            // Shuffle questions for random order
             shuffleArray(filteredQuestions);
+            
+            console.log('Applied filters. Found', filteredQuestions.length, 'questions');
         }
 
-        // Shuffle array
+        // Shuffle array using Fisher-Yates algorithm
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -1095,7 +1154,7 @@
         function showQuestion() {
             const question = filteredQuestions[currentQuestionIndex];
             
-            // Update question number and marked status
+            // Update question number and total
             document.getElementById('current-question').textContent = currentQuestionIndex + 1;
             document.getElementById('total-questions').textContent = filteredQuestions.length;
             
@@ -1112,9 +1171,13 @@
             question.options.forEach((option, index) => {
                 const optionElement = document.createElement('div');
                 optionElement.className = 'option';
+                
+                // Check if this option is selected
                 if (userAnswers[currentQuestionIndex] === option) {
                     optionElement.classList.add('selected');
                 }
+                
+                // Check if question is marked
                 if (markedQuestions[currentQuestionIndex]) {
                     optionElement.classList.add('option-marked');
                 }
