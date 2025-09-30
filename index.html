@@ -441,44 +441,6 @@
             flex-wrap: wrap;
         }
         
-        .file-upload {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .file-input {
-            margin: 15px 0;
-            padding: 15px;
-            border: 2px dashed #dee2e6;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.9);
-            transition: var(--transition);
-        }
-        
-        .file-input:hover {
-            border-color: var(--primary);
-            background: rgba(255, 255, 255, 1);
-        }
-        
-        .status {
-            margin-top: 15px;
-            padding: 15px;
-            border-radius: 8px;
-            font-weight: 600;
-        }
-        
-        .status.success {
-            background: #d4f4e9;
-            color: #0ca678;
-            border: 1px solid #20c997;
-        }
-        
-        .status.error {
-            background: #fcdae4;
-            color: #c2255c;
-            border: 1px solid var(--danger);
-        }
-        
         .loading {
             text-align: center;
             padding: 40px;
@@ -532,6 +494,111 @@
             background: var(--warning);
             color: white;
         }
+        
+        .user-records {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .records-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .records-table th,
+        .records-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .records-table th {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .records-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .records-table .score-cell {
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .records-table .passed {
+            color: #20c997;
+        }
+        
+        .records-table .failed {
+            color: var(--danger);
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 10px;
+            padding: 5px;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: var(--transition);
+            font-weight: 600;
+        }
+        
+        .tab.active {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .tab:hover:not(.active) {
+            background: #f8f9fa;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .user-info {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .user-info input {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .empty-records {
+            text-align: center;
+            padding: 40px;
+            color: var(--gray);
+        }
+        
+        .empty-records i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
@@ -541,13 +608,9 @@
             <p class="subtitle">Test your knowledge with our advanced quiz platform</p>
         </header>
         
-        <div class="file-upload card">
-            <h3><i class="fas fa-file-upload"></i> Upload Question Bank</h3>
-            <div class="file-input">
-                <input type="file" id="excel-file" accept=".xlsx, .xls">
-            </div>
-            <button id="load-data"><i class="fas fa-database"></i> Load Questions</button>
-            <div id="upload-status" class="status"></div>
+        <div class="tabs">
+            <div class="tab active" data-tab="quiz">Take Quiz</div>
+            <div class="tab" data-tab="records">My Records</div>
         </div>
         
         <div id="loading-message" class="loading card">
@@ -555,111 +618,144 @@
             Loading questions from database...
         </div>
         
-        <div class="dashboard" id="main-content" style="display: none;">
-            <div class="card timer-container">
-                <h3><i class="fas fa-clock"></i> Time Remaining</h3>
-                <div class="timer" id="timer">10:00</div>
-                <div class="progress-bar">
-                    <div class="progress" id="progress-bar"></div>
+        <div class="tab-content active" id="quiz-tab">
+            <div class="dashboard" id="main-content" style="display: none;">
+                <div class="card timer-container">
+                    <h3><i class="fas fa-clock"></i> Time Remaining</h3>
+                    <div class="timer" id="timer">10:00</div>
+                    <div class="progress-bar">
+                        <div class="progress" id="progress-bar"></div>
+                    </div>
+                    <p>Time per question: <strong>1 minute</strong></p>
                 </div>
-                <p>Time per question: <strong>1 minute</strong></p>
+                
+                <div class="card filters">
+                    <h3><i class="fas fa-filter"></i> Filter Questions</h3>
+                    <div class="user-info">
+                        <input type="text" id="user-name" placeholder="Enter your name" required>
+                        <input type="email" id="user-email" placeholder="Enter your email">
+                    </div>
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="exam-filter"><i class="fas fa-graduation-cap"></i> Exam</label>
+                            <select id="exam-filter">
+                                <option value="all">All Exams</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="section-filter"><i class="fas fa-layer-group"></i> Section</label>
+                            <select id="section-filter">
+                                <option value="all">All Sections</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="topic-filter"><i class="fas fa-book"></i> Topic</label>
+                            <select id="topic-filter">
+                                <option value="all">All Topics</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="question-count"><i class="fas fa-list-ol"></i> Number of Questions</label>
+                            <input type="number" id="question-count" min="1" max="50" value="10">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label>&nbsp;</label>
+                            <button id="start-quiz"><i class="fas fa-play-circle"></i> Start Quiz</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             
-            <div class="card filters">
-                <h3><i class="fas fa-filter"></i> Filter Questions</h3>
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label for="exam-filter"><i class="fas fa-graduation-cap"></i> Exam</label>
-                        <select id="exam-filter">
-                            <option value="all">All Exams</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="section-filter"><i class="fas fa-layer-group"></i> Section</label>
-                        <select id="section-filter">
-                            <option value="all">All Sections</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="topic-filter"><i class="fas fa-book"></i> Topic</label>
-                        <select id="topic-filter">
-                            <option value="all">All Topics</option>
-                        </select>
+            <div class="quiz-container" id="quiz-container">
+                <div class="quiz-header">
+                    <div class="question-number">Question <span id="current-question">1</span> of <span id="total-questions">10</span></div>
+                    <div class="question-meta">
+                        <span><i class="fas fa-clock"></i> <span id="quiz-timer">10:00</span></span>
+                        <span id="marked-status"><i class="far fa-bookmark"></i> Not Marked</span>
                     </div>
                 </div>
                 
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label for="question-count"><i class="fas fa-list-ol"></i> Number of Questions</label>
-                        <input type="number" id="question-count" min="1" max="50" value="10">
+                <div class="question-text" id="question-text"></div>
+                
+                <div class="options" id="options-container">
+                    <!-- Options will be populated by JavaScript -->
+                </div>
+                
+                <div class="quiz-controls">
+                    <div class="left-controls">
+                        <button id="mark-btn" class="mark-btn"><i class="far fa-bookmark"></i> Mark</button>
+                        <button id="clear-btn" class="btn-secondary"><i class="fas fa-eraser"></i> Clear</button>
                     </div>
                     
-                    <div class="filter-group">
-                        <label>&nbsp;</label>
-                        <button id="start-quiz"><i class="fas fa-play-circle"></i> Start Quiz</button>
+                    <div class="right-controls">
+                        <button id="prev-btn" class="btn-secondary"><i class="fas fa-arrow-left"></i> Previous</button>
+                        <button id="next-btn" class="btn-success">Save & Next <i class="fas fa-arrow-right"></i></button>
+                        <button id="submit-btn" class="btn-danger" style="display: none;"><i class="fas fa-flag-checkered"></i> Submit Quiz</button>
                     </div>
+                </div>
+                
+                <div class="question-palette" id="question-palette">
+                    <!-- Question palette will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="results card" id="results-container">
+                <h2><i class="fas fa-trophy"></i> Quiz Completed!</h2>
+                <div class="score">Your Score: <span id="score-value">0</span>/<span id="total-score">10</span></div>
+                
+                <div class="stats">
+                    <div class="stat correct">
+                        <div class="stat-value" id="correct-answers">0</div>
+                        <div class="stat-label">Correct Answers</div>
+                    </div>
+                    <div class="stat incorrect">
+                        <div class="stat-value" id="incorrect-answers">0</div>
+                        <div class="stat-label">Incorrect Answers</div>
+                    </div>
+                    <div class="stat unanswered">
+                        <div class="stat-value" id="unanswered">0</div>
+                        <div class="stat-label">Unanswered</div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button id="restart-btn" class="btn-success"><i class="fas fa-redo"></i> Take Another Quiz</button>
+                    <button id="view-records-btn" class="btn-secondary"><i class="fas fa-history"></i> View My Records</button>
                 </div>
             </div>
         </div>
         
-        <div class="quiz-container" id="quiz-container">
-            <div class="quiz-header">
-                <div class="question-number">Question <span id="current-question">1</span> of <span id="total-questions">10</span></div>
-                <div class="question-meta">
-                    <span><i class="fas fa-clock"></i> <span id="quiz-timer">10:00</span></span>
-                    <span id="marked-status"><i class="far fa-bookmark"></i> Not Marked</span>
+        <div class="tab-content" id="records-tab">
+            <div class="card user-records" id="user-records">
+                <h2><i class="fas fa-history"></i> My Quiz Records</h2>
+                <div id="records-content">
+                    <table class="records-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Exam</th>
+                                <th>Score</th>
+                                <th>Time Taken</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="records-table-body">
+                            <!-- Records will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                    <div id="empty-records" class="empty-records" style="display: none;">
+                        <i class="fas fa-inbox"></i>
+                        <h3>No Records Yet</h3>
+                        <p>Take your first quiz to see your records here!</p>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="question-text" id="question-text"></div>
-            
-            <div class="options" id="options-container">
-                <!-- Options will be populated by JavaScript -->
-            </div>
-            
-            <div class="quiz-controls">
-                <div class="left-controls">
-                    <button id="mark-btn" class="mark-btn"><i class="far fa-bookmark"></i> Mark</button>
-                    <button id="clear-btn" class="btn-secondary"><i class="fas fa-eraser"></i> Clear</button>
-                </div>
-                
-                <div class="right-controls">
-                    <button id="prev-btn" class="btn-secondary"><i class="fas fa-arrow-left"></i> Previous</button>
-                    <button id="next-btn" class="btn-success">Save & Next <i class="fas fa-arrow-right"></i></button>
-                    <button id="submit-btn" class="btn-danger" style="display: none;"><i class="fas fa-flag-checkered"></i> Submit Quiz</button>
-                </div>
-            </div>
-            
-            <div class="question-palette" id="question-palette">
-                <!-- Question palette will be populated by JavaScript -->
-            </div>
-        </div>
-        
-        <div class="results card" id="results-container">
-            <h2><i class="fas fa-trophy"></i> Quiz Completed!</h2>
-            <div class="score">Your Score: <span id="score-value">0</span>/<span id="total-score">10</span></div>
-            
-            <div class="stats">
-                <div class="stat correct">
-                    <div class="stat-value" id="correct-answers">0</div>
-                    <div class="stat-label">Correct Answers</div>
-                </div>
-                <div class="stat incorrect">
-                    <div class="stat-value" id="incorrect-answers">0</div>
-                    <div class="stat-label">Incorrect Answers</div>
-                </div>
-                <div class="stat unanswered">
-                    <div class="stat-value" id="unanswered">0</div>
-                    <div class="stat-label">Unanswered</div>
-                </div>
-            </div>
-            
-            <div class="action-buttons">
-                <button id="restart-btn" class="btn-success"><i class="fas fa-redo"></i> Take Another Quiz</button>
-                <button class="review-btn btn-secondary"><i class="fas fa-chart-bar"></i> Review Answers</button>
-                <button class="btn-secondary"><i class="fas fa-download"></i> Download Results</button>
             </div>
         </div>
     </div>
@@ -678,6 +774,9 @@
         let timeLeft;
         let totalTime;
         let quizActive = false;
+        let quizStartTime;
+        let currentUserName = '';
+        let currentUserEmail = '';
 
         // DOM Elements
         const loadingMessage = document.getElementById('loading-message');
@@ -692,76 +791,136 @@
         const sectionFilter = document.getElementById('section-filter');
         const topicFilter = document.getElementById('topic-filter');
         const questionCountInput = document.getElementById('question-count');
-        const fileInput = document.getElementById('excel-file');
-        const loadDataBtn = document.getElementById('load-data');
-        const uploadStatus = document.getElementById('upload-status');
+        const userNameInput = document.getElementById('user-name');
+        const userEmailInput = document.getElementById('user-email');
         const markBtn = document.getElementById('mark-btn');
         const clearBtn = document.getElementById('clear-btn');
         const markedStatus = document.getElementById('marked-status');
+        const userRecords = document.getElementById('user-records');
+        const recordsTableBody = document.getElementById('records-table-body');
+        const emptyRecords = document.getElementById('empty-records');
+        const viewRecordsBtn = document.getElementById('view-records-btn');
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
-            loadDataBtn.addEventListener('click', loadExcelData);
+            // Load questions automatically
+            loadQuestionsAutomatically();
+            
+            // Set up event listeners
             startQuizBtn.addEventListener('click', startQuiz);
+            viewRecordsBtn.addEventListener('click', showRecordsTab);
+            
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab');
+                    switchTab(tabName);
+                });
+            });
+            
+            // Load user records
+            loadUserRecords();
         });
 
-        // Load questions from file
-        function loadExcelData() {
-            const file = fileInput.files[0];
-            if (!file) {
-                showStatus('Please select an Excel file', 'error');
-                return;
+        // Load questions automatically from GitHub
+        async function loadQuestionsAutomatically() {
+            try {
+                // For demo purposes, we'll use sample data
+                // In production, you would fetch from EXCEL_FILE_URL
+                questionData = getSampleQuestions();
+                updateFilterOptions();
+                
+                loadingMessage.style.display = 'none';
+                mainContent.style.display = 'grid';
+                
+                console.log(`Successfully loaded ${questionData.length} questions`);
+                
+            } catch (error) {
+                console.error('Error loading questions:', error);
+                loadingMessage.innerHTML = `
+                    <div style="color: #e74c3c;">
+                        <i class="fas fa-exclamation-triangle"></i><br>
+                        Error loading questions: ${error.message}<br>
+                        <button onclick="loadQuestionsAutomatically()" style="margin-top: 10px;">Retry</button>
+                    </div>
+                `;
             }
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                    
-                    questionData = processExcelData(jsonData);
-                    updateFilterOptions();
-                    
-                    showStatus(`Successfully loaded ${questionData.length} questions`, 'success');
-                    loadingMessage.style.display = 'none';
-                    mainContent.style.display = 'grid';
-                    
-                } catch (error) {
-                    console.error('Error reading Excel file:', error);
-                    showStatus('Error reading Excel file. Please check the format.', 'error');
-                }
-            };
-            reader.readAsArrayBuffer(file);
         }
 
-        // Process Excel data into question objects
-        function processExcelData(jsonData) {
-            const questions = [];
-            
-            for (let i = 1; i < jsonData.length; i++) {
-                const row = jsonData[i];
-                if (!row || row.length < 10) continue;
-                
-                const question = {
-                    id: row[0] || i,
-                    exam: row[1] || '',
-                    section: row[2] || '',
-                    topic: row[3] || '',
-                    questionType: row[4] || 'MCQ',
-                    question: row[5] || '',
-                    year: row[6] || '',
-                    options: [row[7], row[8], row[9], row[10]].filter(opt => opt !== undefined && opt !== ''),
-                    correctAnswer: row[11] || ''
-                };
-                
-                questions.push(question);
-            }
-            
-            return questions;
+        // Sample questions for demo
+        function getSampleQuestions() {
+            return [
+                {
+                    id: 1,
+                    exam: "GATE",
+                    section: "Agritude",
+                    topic: "Articles",
+                    questionType: "MCQ",
+                    question: "Even though I had planned to go skiing with my friends, I had to ______ at the last moment because of an injury.",
+                    year: 2025,
+                    options: ["back up", "back of", "back on", "back out"],
+                    correctAnswer: "back out"
+                },
+                {
+                    id: 2,
+                    exam: "GATE",
+                    section: "Agritude",
+                    topic: "Articles",
+                    questionType: "MCQ",
+                    question: "The President, along with the Council of Ministers, ______ to visit India next week.",
+                    year: 2025,
+                    options: ["with", "wishes", "will wish", "is wishing"],
+                    correctAnswer: "wishes"
+                },
+                {
+                    id: 3,
+                    exam: "GATE",
+                    section: "Agritude",
+                    topic: "Grammar",
+                    questionType: "MCQ",
+                    question: "Which of the following sentences is grammatically correct?",
+                    year: 2024,
+                    options: [
+                        "Neither of the students have completed their homework.",
+                        "Neither of the students has completed their homework.",
+                        "Neither of the students have completed his homework.",
+                        "Neither of the students has completed his homework."
+                    ],
+                    correctAnswer: "Neither of the students has completed his homework."
+                },
+                {
+                    id: 4,
+                    exam: "GATE",
+                    section: "Agritude",
+                    topic: "Vocabulary",
+                    questionType: "MCQ",
+                    question: "What is the meaning of the word 'ephemeral'?",
+                    year: 2024,
+                    options: [
+                        "Lasting for a very short time",
+                        "Extremely beautiful",
+                        "Difficult to understand",
+                        "Related to memory"
+                    ],
+                    correctAnswer: "Lasting for a very short time"
+                },
+                {
+                    id: 5,
+                    exam: "GATE",
+                    section: "Agritude",
+                    topic: "Articles",
+                    questionType: "MCQ",
+                    question: "Fill in the blank: I saw ______ eagle flying high in ______ sky.",
+                    year: 2023,
+                    options: [
+                        "a, the",
+                        "an, the",
+                        "the, a",
+                        "an, a"
+                    ],
+                    correctAnswer: "an, the"
+                }
+            ];
         }
 
         // Update filter dropdowns based on loaded data
@@ -796,17 +955,45 @@
             });
         }
 
-        // Show status message
-        function showStatus(message, type) {
-            uploadStatus.textContent = message;
-            uploadStatus.className = 'status';
-            uploadStatus.classList.add(type);
+        // Switch between tabs
+        function switchTab(tabName) {
+            // Update active tab
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // Update active content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            
+            // Load records if switching to records tab
+            if (tabName === 'records') {
+                loadUserRecords();
+            }
+        }
+
+        // Show records tab
+        function showRecordsTab() {
+            switchTab('records');
         }
 
         // Start the quiz
         function startQuiz() {
+            // Validate user input
+            if (!userNameInput.value.trim()) {
+                alert('Please enter your name to start the quiz.');
+                userNameInput.focus();
+                return;
+            }
+            
+            currentUserName = userNameInput.value.trim();
+            currentUserEmail = userEmailInput.value.trim();
+            
             if (questionData.length === 0) {
-                alert('Please load questions from an Excel file first.');
+                alert('Questions are still loading. Please wait a moment.');
                 return;
             }
             
@@ -824,6 +1011,7 @@
             // Set up timer
             totalTime = filteredQuestions.length * 60;
             timeLeft = totalTime;
+            quizStartTime = new Date();
             updateTimerDisplay();
             startTimer();
             
@@ -1072,6 +1260,10 @@
             clearInterval(timer);
             quizActive = false;
             
+            // Calculate time taken
+            const endTime = new Date();
+            const timeTaken = Math.round((endTime - quizStartTime) / 1000); // in seconds
+            
             // Calculate results
             let correctCount = 0;
             let incorrectCount = 0;
@@ -1087,6 +1279,9 @@
                 }
             });
             
+            // Save quiz record
+            saveQuizRecord(correctCount, timeTaken);
+            
             // Display results
             document.getElementById('score-value').textContent = correctCount;
             document.getElementById('total-score').textContent = filteredQuestions.length;
@@ -1100,6 +1295,64 @@
             // Show results container
             quizContainer.style.display = 'none';
             resultsContainer.style.display = 'block';
+        }
+
+        // Save quiz record to localStorage
+        function saveQuizRecord(score, timeTaken) {
+            const records = getQuizRecords();
+            const selectedExam = examFilter.value === 'all' ? 'Mixed' : examFilter.value;
+            
+            const record = {
+                id: Date.now(),
+                date: new Date().toLocaleString(),
+                name: currentUserName,
+                email: currentUserEmail,
+                exam: selectedExam,
+                score: score,
+                total: filteredQuestions.length,
+                timeTaken: formatTime(timeTaken),
+                percentage: Math.round((score / filteredQuestions.length) * 100),
+                status: score >= (filteredQuestions.length * 0.6) ? 'Passed' : 'Failed'
+            };
+            
+            records.unshift(record); // Add to beginning
+            localStorage.setItem('quizRecords', JSON.stringify(records));
+        }
+
+        // Get quiz records from localStorage
+        function getQuizRecords() {
+            const records = localStorage.getItem('quizRecords');
+            return records ? JSON.parse(records) : [];
+        }
+
+        // Load and display user records
+        function loadUserRecords() {
+            const records = getQuizRecords();
+            const tableBody = document.getElementById('records-table-body');
+            
+            if (records.length === 0) {
+                emptyRecords.style.display = 'block';
+                tableBody.innerHTML = '';
+            } else {
+                emptyRecords.style.display = 'none';
+                tableBody.innerHTML = records.map(record => `
+                    <tr>
+                        <td>${record.date}</td>
+                        <td>${record.name}</td>
+                        <td>${record.exam}</td>
+                        <td class="score-cell ${record.status.toLowerCase()}">${record.score}/${record.total} (${record.percentage}%)</td>
+                        <td>${record.timeTaken}</td>
+                        <td class="${record.status.toLowerCase()}">${record.status}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // Format time in seconds to MM:SS
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
         }
 
         // Restart the quiz
